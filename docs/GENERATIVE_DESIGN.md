@@ -39,47 +39,17 @@
 
 それ以外の大域的な振る舞いは未決定。
 
-## 5. 見た目とモチーフ
-
-現時点で関心が示されている動きは次の通り。
-
-- 新体操のリボン演技
-- 映画『マトリックス』のセンチネルの付属肢に見られるうねり
-
-世界観と空間は、深海をモチーフとする。
-
-質感については次の方針とする。
-
-- メタリックな質感を好む
-- チープに見える金属表現は避ける
-
-避けたい見え方は次の通り。
-
-- Snakeゲームのような追従運動
-- 直線を単純に揺らしただけに見える表現
-
-金属の種類、色、表面仕上げ、反射の性質、具体的な形、構図、空間、カメラ、ライティングは未決定。
-
-### 参考資料
-
-画像自体は保存せず、出典ページを参照する。素材として利用する場合は、各ページのクレジットと権利表記をあらためて確認する。
-
-- [Light — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/okeanos-explorations-ex2103-gallery-media-light/)：深海における探照灯
-- [Navigating a Shipwreck — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/navigating-a-shipwreck/)：暗闇で照らされた金属構造物
-- [Shipwreck — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/daily-image-media-20210528/)：海底の金属表面
-- [Marine Snow — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/explorations-19gulfofalaska-logs-aug1-media-video-marine-snow/)：光の中に現れる浮遊物
-
-## 6. パラメータと制約
+## 5. パラメータと制約
 
 未決定。
 
-## 7. 技術的な実現方法の候補
+## 6. 技術的な実現方法の候補
 
 - ブラウザでの実行を想定する
 - GPGPUの利用を検討する
 - 親子関係を持たないフラットなボーン配置による `SkinnedMesh` を、変形フレームと断面の補間を実現する候補とする
 - 力学シミュレーション、MSD、PBD、XPBDについて比較したが、採用方式は未決定
 
-## 8. 評価方法
+## 7. 評価方法
 
 未決定。
