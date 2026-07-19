@@ -46,6 +46,8 @@
 - 新体操のリボン演技
 - 映画『マトリックス』のセンチネルの付属肢に見られるうねり
 
+世界観と空間は、深海をモチーフとする。
+
 質感については次の方針とする。
 
 - メタリックな質感を好む
@@ -57,6 +59,15 @@
 - 直線を単純に揺らしただけに見える表現
 
 金属の種類、色、表面仕上げ、反射の性質、具体的な形、構図、空間、カメラ、ライティングは未決定。
+
+### 参考資料
+
+画像自体は保存せず、出典ページを参照する。素材として利用する場合は、各ページのクレジットと権利表記をあらためて確認する。
+
+- [Light — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/okeanos-explorations-ex2103-gallery-media-light/)：深海における探照灯
+- [Navigating a Shipwreck — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/navigating-a-shipwreck/)：暗闇で照らされた金属構造物
+- [Shipwreck — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/daily-image-media-20210528/)：海底の金属表面
+- [Marine Snow — NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/multimedia/explorations-19gulfofalaska-logs-aug1-media-video-marine-snow/)：光の中に現れる浮遊物
 
 ## 6. パラメータと制約
 
