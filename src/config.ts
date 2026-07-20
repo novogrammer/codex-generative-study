@@ -35,7 +35,7 @@ export const SCENE_CONFIG = {
         },
       ],
     },
-    ambient: { color: 0x183947, intensity: 0.4 },
+    ambient: { color: 0x183947, intensity: 20 },
   },
   tubes: {
     count: 32,
