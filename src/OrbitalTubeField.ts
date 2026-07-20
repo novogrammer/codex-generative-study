@@ -17,29 +17,45 @@ const TAU = Math.PI * 2
 const FRAME_TRANSPORT_STEPS = 16
 
 export class OrbitalTubeField {
-  public readonly object: THREE.InstancedMesh
+  public readonly object: THREE.Group
 
-  private readonly geometry: THREE.BufferGeometry
-  private readonly material: THREE.MeshStandardNodeMaterial
+  private readonly tubeGeometry: THREE.BufferGeometry
+  private readonly plateGeometry: THREE.BufferGeometry
+  private readonly tubeMaterial: THREE.MeshStandardNodeMaterial
+  private readonly plateMaterial: THREE.MeshStandardNodeMaterial
+  private readonly tubeMesh: THREE.InstancedMesh
+  private readonly plateMesh: THREE.InstancedMesh
 
   public constructor() {
-    this.geometry = this.createGeometry()
-    this.material = this.createMaterial()
-    this.object = new THREE.InstancedMesh(
-      this.geometry,
-      this.material,
+    this.tubeGeometry = this.createTubeGeometry()
+    this.plateGeometry = this.createPlateGeometry()
+    this.tubeMaterial = this.createMaterial(false)
+    this.plateMaterial = this.createMaterial(true)
+    this.tubeMesh = new THREE.InstancedMesh(
+      this.tubeGeometry,
+      this.tubeMaterial,
       SCENE_CONFIG.tubes.count,
     )
-    this.object.frustumCulled = false
+    this.plateMesh = new THREE.InstancedMesh(
+      this.plateGeometry,
+      this.plateMaterial,
+      SCENE_CONFIG.tubes.count,
+    )
+    this.tubeMesh.frustumCulled = false
+    this.plateMesh.frustumCulled = false
+    this.object = new THREE.Group()
+    this.object.add(this.tubeMesh, this.plateMesh)
     this.setInstanceTransforms()
   }
 
   public dispose(): void {
-    this.geometry.dispose()
-    this.material.dispose()
+    this.tubeGeometry.dispose()
+    this.plateGeometry.dispose()
+    this.tubeMaterial.dispose()
+    this.plateMaterial.dispose()
   }
 
-  private createGeometry(): THREE.BufferGeometry {
+  private createTubeGeometry(): THREE.BufferGeometry {
     const { longitudinalSegments, radialSegments } = SCENE_CONFIG.tubes
     const verticesPerRing = radialSegments + 1
     const positions: number[] = []
@@ -125,33 +141,112 @@ export class OrbitalTubeField {
     }
 
     const geometry = new THREE.BufferGeometry()
+    const vertexCount = positions.length / 3
+    const surfaceParameters = new Float32Array(vertexCount * 4)
+
+    for (let index = 0; index < vertexCount; index += 1) {
+      const offset = index * 4
+      surfaceParameters[offset] = curveParameters[index]
+      surfaceParameters[offset + 1] = ringAngles[index]
+      surfaceParameters[offset + 2] = radiusScales[index]
+      surfaceParameters[offset + 3] = capNormalScales[index]
+    }
+
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
-    geometry.setAttribute('curveU', new THREE.Float32BufferAttribute(curveParameters, 1))
-    geometry.setAttribute('ringAngle', new THREE.Float32BufferAttribute(ringAngles, 1))
-    geometry.setAttribute('radiusScale', new THREE.Float32BufferAttribute(radiusScales, 1))
     geometry.setAttribute(
-      'capNormalScale',
-      new THREE.Float32BufferAttribute(capNormalScales, 1),
+      'surfaceParameters',
+      new THREE.BufferAttribute(surfaceParameters, 4),
     )
     geometry.setIndex(indices)
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 24)
     return geometry
   }
 
-  private createMaterial(): THREE.MeshStandardNodeMaterial {
+  private createPlateGeometry(): THREE.BufferGeometry {
+    const plates = SCENE_CONFIG.tubes.plates
+    const positions: number[] = []
+    const normals: number[] = []
+    const surfaceParameters: number[] = []
+    const plateParameters: number[] = []
+    const indices: number[] = []
+    const plateSlope = plates.tipLift / plates.length
+    const vertexOffsets = [
+      [-0.5, -0.5],
+      [0.5, -0.5],
+      [0.5, 0.5],
+      [-0.5, 0.5],
+    ]
+
+    for (let row = 0; row < plates.rowCount; row += 1) {
+      const u = (row + 1) / (plates.rowCount + 1)
+      const angleOffset = (row % 2) * (Math.PI / plates.aroundCount)
+
+      for (let around = 0; around < plates.aroundCount; around += 1) {
+        const angle = (around / plates.aroundCount) * TAU + angleOffset
+        const vertexStart = positions.length / 3
+
+        for (const [alongFactor, acrossFactor] of vertexOffsets) {
+          positions.push(u, Math.cos(angle), Math.sin(angle))
+          normals.push(0, Math.cos(angle), Math.sin(angle))
+          surfaceParameters.push(u, angle, 1, 0)
+          plateParameters.push(
+            alongFactor * plates.length,
+            acrossFactor * plates.width,
+            plates.surfaceOffset + (alongFactor + 0.5) * plates.tipLift,
+            plateSlope,
+          )
+        }
+
+        indices.push(
+          vertexStart,
+          vertexStart + 3,
+          vertexStart + 1,
+          vertexStart + 1,
+          vertexStart + 3,
+          vertexStart + 2,
+        )
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
+    geometry.setAttribute(
+      'surfaceParameters',
+      new THREE.Float32BufferAttribute(surfaceParameters, 4),
+    )
+    geometry.setAttribute(
+      'plateParameters',
+      new THREE.Float32BufferAttribute(plateParameters, 4),
+    )
+    geometry.setIndex(indices)
+    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 24)
+    return geometry
+  }
+
+  private createMaterial(isPlate: boolean): THREE.MeshStandardNodeMaterial {
     const config = SCENE_CONFIG.tubes
+    const appearance = isPlate ? config.plates.material : config
     const material = new THREE.MeshStandardNodeMaterial({
-      color: config.color,
-      metalness: config.metalness,
-      roughness: config.roughness,
+      color: appearance.color,
+      metalness: appearance.metalness,
+      roughness: appearance.roughness,
       side: THREE.DoubleSide,
     })
 
-    const uNode = attribute<'float'>('curveU', 'float')
-    const angleNode = attribute<'float'>('ringAngle', 'float')
-    const radiusScaleNode = attribute<'float'>('radiusScale', 'float')
-    const capNormalScaleNode = attribute<'float'>('capNormalScale', 'float')
+    const surfaceParameters = attribute<'vec4'>('surfaceParameters', 'vec4')
+    const uNode = surfaceParameters.x
+    const angleNode = surfaceParameters.y
+    const radiusScaleNode = surfaceParameters.z
+    const capNormalScaleNode = surfaceParameters.w
+    const plateParameters = isPlate
+      ? attribute<'vec4'>('plateParameters', 'vec4')
+      : null
+    const longitudinalOffsetNode = plateParameters?.x ?? float(0)
+    const circumferentialOffsetNode = plateParameters?.y ?? float(0)
+    const outwardOffsetNode = plateParameters?.z ?? float(0)
+    const plateSlopeNode = plateParameters?.w ?? float(0)
     const instanceQuaternion = attribute<'vec4'>('instanceQuaternion', 'vec4')
     const instance = float(instanceIndex)
     const hashA = fract(sin(instance.mul(12.9898).add(0.31)).mul(43758.5453))
@@ -261,6 +356,9 @@ export class OrbitalTubeField {
       u: THREE.Node<'float'>,
       ringAngle: THREE.Node<'float'>,
       radiusScale: THREE.Node<'float'>,
+      longitudinalOffset: THREE.Node<'float'>,
+      circumferentialOffset: THREE.Node<'float'>,
+      outwardOffset: THREE.Node<'float'>,
     ) => {
       const center = curvePoint(u)
       const tangent = curveTangent(u)
@@ -270,16 +368,32 @@ export class OrbitalTubeField {
       const radial = normal
         .mul(ringAngle.cos())
         .add(binormal.mul(ringAngle.sin()))
+      const circumferential = normal
+        .mul(ringAngle.sin().negate())
+        .add(binormal.mul(ringAngle.cos()))
 
       return {
-        position: center.add(radial.mul(config.radius).mul(radiusScale)),
+        position: center
+          .add(radial.mul(radiusScale.mul(config.radius).add(outwardOffset)))
+          .add(tangent.mul(longitudinalOffset))
+          .add(circumferential.mul(circumferentialOffset)),
         normal: radial,
         tangent,
       }
     }
 
-    const surface = surfaceData(uNode, angleNode, radiusScaleNode)
-    const localNormal = surface.normal
+    const surface = surfaceData(
+      uNode,
+      angleNode,
+      radiusScaleNode,
+      longitudinalOffsetNode,
+      circumferentialOffsetNode,
+      outwardOffsetNode,
+    )
+    const sideNormal = surface.normal
+      .sub(surface.tangent.mul(plateSlopeNode))
+      .normalize()
+    const localNormal = sideNormal
       .mul(float(1).sub(capNormalScaleNode.abs()))
       .add(surface.tangent.mul(capNormalScaleNode))
       .normalize()
@@ -314,11 +428,17 @@ export class OrbitalTubeField {
       rotation.setFromEuler(euler)
       rotation.toArray(instanceQuaternions, index * 4)
       matrix.compose(position, rotation, scale)
-      this.object.setMatrixAt(index, matrix)
+      this.tubeMesh.setMatrixAt(index, matrix)
+      this.plateMesh.setMatrixAt(index, matrix)
     }
 
-    this.object.instanceMatrix.needsUpdate = true
-    this.geometry.setAttribute(
+    this.tubeMesh.instanceMatrix.needsUpdate = true
+    this.plateMesh.instanceMatrix.needsUpdate = true
+    this.tubeGeometry.setAttribute(
+      'instanceQuaternion',
+      new THREE.InstancedBufferAttribute(instanceQuaternions, 4),
+    )
+    this.plateGeometry.setAttribute(
       'instanceQuaternion',
       new THREE.InstancedBufferAttribute(instanceQuaternions, 4),
     )
