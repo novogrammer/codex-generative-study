@@ -45,7 +45,6 @@ export const SCENE_CONFIG = {
     color: 0xa9b6bc,
     metalness: 0.85,
     roughness: 0.24,
-    spread: [14, 8, 18] as const,
     rotationSpread: [0.9, 1.4, 0.7] as const,
   },
   marineSnow: {

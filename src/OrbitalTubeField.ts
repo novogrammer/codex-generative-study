@@ -98,7 +98,7 @@ export class OrbitalTubeField {
     const phaseA = hashB.mul(TAU)
     const phaseB = hashC.mul(TAU)
 
-    const curvePoint = (u: THREE.Node<'float'>) => {
+    const rawCurvePoint = (u: THREE.Node<'float'>) => {
       const angleA = u
         .mul(config.modeA.turns * TAU)
         .add(time.mul(config.modeA.speed * TAU).mul(variationSpeed))
@@ -116,6 +116,10 @@ export class OrbitalTubeField {
         angleB.sin().mul(radiusB),
       )
     }
+
+    const curvePoint = (u: THREE.Node<'float'>) => rawCurvePoint(u).sub(
+      rawCurvePoint(float(0)),
+    )
 
     const curveTangent = (u: THREE.Node<'float'>) => {
       const angleA = u
@@ -186,21 +190,15 @@ export class OrbitalTubeField {
   }
 
   private setInstanceTransforms(): void {
-    const [width, height, depth] = SCENE_CONFIG.tubes.spread
     const random = this.createRandom(0x51a7c3)
     const matrix = new THREE.Matrix4()
-    const position = new THREE.Vector3()
+    const position = new THREE.Vector3(0, 0, 0)
     const rotation = new THREE.Quaternion()
     const scale = new THREE.Vector3(1, 1, 1)
     const euler = new THREE.Euler()
     const [rotationX, rotationY, rotationZ] = SCENE_CONFIG.tubes.rotationSpread
 
     for (let index = 0; index < SCENE_CONFIG.tubes.count; index += 1) {
-      position.set(
-        (random() - 0.5) * width,
-        (random() - 0.5) * height,
-        -2 - random() * depth,
-      )
       euler.set(
         (random() - 0.5) * rotationX,
         (random() - 0.5) * rotationY,
