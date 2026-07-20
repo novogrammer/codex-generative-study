@@ -51,11 +51,7 @@ export const SCENE_CONFIG = {
   marineSnow: {
     count: 5000,
     spread: [16, 10, 20] as const,
-    fallSpeed: 0.025,
-    driftSpeed: 0.18,
-    driftAmount: 0.08,
-    size: 0.022,
+    size: 0.08,
     color: 0xb9d8df,
-    opacity: 0.56,
   },
 } as const
