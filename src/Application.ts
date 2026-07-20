@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { Inspector } from 'three/addons/inspector/Inspector.js'
 import { DeepSeaScene } from './DeepSeaScene'
 import { MarineSnowField } from './MarineSnowField'
 import { OrbitalTubeField } from './OrbitalTubeField'
@@ -17,6 +18,7 @@ export class Application {
   public constructor(root: HTMLElement) {
     this.root = root
     this.renderer = new THREE.WebGPURenderer({ antialias: true })
+    this.renderer.inspector = new Inspector()
     this.renderer.setPixelRatio(
       Math.min(window.devicePixelRatio, SCENE_CONFIG.pixelRatioMax),
     )
