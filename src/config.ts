@@ -44,8 +44,8 @@ export const SCENE_CONFIG = {
     },
     combinedModeRadius: 0.9,
     color: 0xa9b6bc,
-    metalness: 0.85,
-    roughness: 0.24,
+    metalness: 1,
+    roughness: 0.1,
     rotationSpread: [0.9, 1.4, 0.7] as const,
   },
   marineSnow: {
