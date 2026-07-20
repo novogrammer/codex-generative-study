@@ -4,14 +4,16 @@ import {
   float,
   fract,
   instanceIndex,
-  select,
+  mix,
   sin,
+  smoothstep,
   time,
   vec3,
 } from 'three/tsl'
 import { SCENE_CONFIG } from './config'
 
 const TAU = Math.PI * 2
+const FRAME_TRANSPORT_STEPS = 16
 
 export class OrbitalTubeField {
   public readonly object: THREE.InstancedMesh
@@ -145,47 +147,69 @@ export class OrbitalTubeField {
       ).normalize()
     }
 
-    const surfacePoint = (
+    const initialNormal = (tangent: THREE.Node<'vec3'>) => {
+      const referenceBlend = smoothstep(0.55, 0.9, tangent.y.abs())
+      const reference = mix(
+        vec3(0, 1, 0),
+        vec3(0, 0, 1),
+        referenceBlend,
+      ).normalize()
+      return reference
+        .sub(tangent.mul(reference.dot(tangent)))
+        .normalize()
+    }
+
+    const transportedNormal = (u: THREE.Node<'float'>) => {
+      let previousTangent: THREE.Node<'vec3'> = curveTangent(float(0))
+      let normal: THREE.Node<'vec3'> = initialNormal(previousTangent)
+
+      for (let step = 1; step <= FRAME_TRANSPORT_STEPS; step += 1) {
+        const sampleU = u.mul(step / FRAME_TRANSPORT_STEPS)
+        const nextTangent = curveTangent(sampleU)
+        const rotationAxis = previousTangent.cross(nextTangent)
+        const denominator = previousTangent
+          .dot(nextTangent)
+          .add(1)
+          .max(0.0001)
+        normal = normal
+          .add(rotationAxis.cross(normal))
+          .add(
+            rotationAxis
+              .cross(rotationAxis.cross(normal))
+              .div(denominator),
+          )
+          .normalize()
+        previousTangent = nextTangent
+      }
+
+      return normal
+        .sub(previousTangent.mul(normal.dot(previousTangent)))
+        .normalize()
+    }
+
+    const surfaceData = (
       u: THREE.Node<'float'>,
       ringAngle: THREE.Node<'float'>,
     ) => {
       const center = curvePoint(u)
       const tangent = curveTangent(u)
-      const signZ = select(tangent.z.greaterThanEqual(0), 1, -1)
-      const basisA = float(-1).div(signZ.add(tangent.z))
-      const basisB = tangent.x.mul(tangent.y).mul(basisA)
-      const normal = vec3(
-        float(1).add(
-          signZ.mul(tangent.x).mul(tangent.x).mul(basisA),
-        ),
-        signZ.mul(basisB),
-        signZ.mul(tangent.x).negate(),
-      )
-      const binormal = vec3(
-        basisB,
-        signZ.add(tangent.y.mul(tangent.y).mul(basisA)),
-        tangent.y.negate(),
-      )
+      const transported = transportedNormal(u)
+      const binormal = tangent.cross(transported).normalize()
+      const normal = binormal.cross(tangent).normalize()
       const radial = normal
         .mul(ringAngle.cos())
         .add(binormal.mul(ringAngle.sin()))
 
-      return center.add(radial.mul(config.radius))
+      return {
+        position: center.add(radial.mul(config.radius)),
+        normal: radial,
+      }
     }
 
-    const deformedPosition = surfacePoint(uNode, angleNode)
-    const longitudinalEpsilon = 1 / config.longitudinalSegments
-    const angularEpsilon = TAU / (config.radialSegments * 4)
-    const tangentU = surfacePoint(uNode.add(longitudinalEpsilon), angleNode).sub(
-      surfacePoint(uNode.sub(longitudinalEpsilon), angleNode),
-    )
-    const tangentAngle = surfacePoint(
-      uNode,
-      angleNode.add(angularEpsilon),
-    ).sub(surfacePoint(uNode, angleNode.sub(angularEpsilon)))
+    const surface = surfaceData(uNode, angleNode)
 
-    material.positionNode = deformedPosition
-    material.normalNode = tangentAngle.cross(tangentU).normalize()
+    material.positionNode = surface.position
+    material.normalNode = surface.normal
     return material
   }
 
