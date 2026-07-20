@@ -16,23 +16,26 @@ export const SCENE_CONFIG = {
   },
   lighting: {
     search: {
-      color: 0xd9f5ff,
-      intensity: 1200,
       distance: 30,
-      angle: 0.52,
+      angle: 0.46,
       penumbra: 0.72,
       decay: 1.4,
+      sources: [
+        {
+          color: 0xd9f5ff,
+          intensity: 76,
+          position: [-0.75, 0.55, 0] as const,
+          target: [-0.15, -0.2, -8] as const,
+        },
+        {
+          color: 0x9edff2,
+          intensity: 52,
+          position: [0.75, 0.5, 0] as const,
+          target: [0.15, -0.25, -8] as const,
+        },
+      ],
     },
-    volume: {
-      color: 0x9edbea,
-      opacity: 0.045,
-      distance: 22,
-      angle: 0.48,
-      radialSegments: 32,
-      heightSegments: 8,
-      position: [0, 0.4, 0] as const,
-    },
-    ambient: { color: 0x183947, intensity: 0.02 },
+    ambient: { color: 0x183947, intensity: 0.4 },
   },
   tubes: {
     count: 32,
