@@ -158,8 +158,9 @@ export class OrbitalTubeField {
     const variationA = hashA.mul(0.4).add(0.8)
     const variationB = hashB.mul(0.4).add(0.8)
     const variationSpeed = hashC.mul(0.4).add(0.8)
-    const phaseA = hashB.mul(TAU)
-    const phaseB = hashC.mul(TAU)
+    const phase = instance.div(SCENE_CONFIG.tubes.count).mul(TAU)
+    const phaseA = phase
+    const phaseB = phase
 
     const rawCurvePoint = (u: THREE.Node<'float'>) => {
       const angleA = u
@@ -172,11 +173,14 @@ export class OrbitalTubeField {
         .add(phaseB)
       const radiusA = variationA.mul(config.modeA.radius)
       const radiusB = variationB.mul(config.modeB.radius)
+      const combinedRadius = variationA
+        .add(variationB)
+        .mul(config.combinedModeRadius * 0.5)
 
       return vec3(
         angleA.cos().mul(radiusA),
-        angleA.sin().mul(radiusA).add(angleB.cos().mul(radiusB)),
         angleB.sin().mul(radiusB),
+        angleA.add(angleB).sin().mul(combinedRadius),
       )
     }
 
@@ -195,16 +199,19 @@ export class OrbitalTubeField {
         .add(phaseB)
       const radiusA = variationA.mul(config.modeA.radius)
       const radiusB = variationB.mul(config.modeB.radius)
+      const combinedRadius = variationA
+        .add(variationB)
+        .mul(config.combinedModeRadius * 0.5)
       const frequencyA = config.modeA.turns * TAU
       const frequencyB = config.modeB.turns * TAU
 
       return vec3(
         angleA.sin().mul(radiusA.mul(-frequencyA)),
-        angleA
-          .cos()
-          .mul(radiusA.mul(frequencyA))
-          .sub(angleB.sin().mul(radiusB.mul(frequencyB))),
         angleB.cos().mul(radiusB.mul(frequencyB)),
+        angleA
+          .add(angleB)
+          .cos()
+          .mul(combinedRadius.mul(frequencyA + frequencyB)),
       ).normalize()
     }
 

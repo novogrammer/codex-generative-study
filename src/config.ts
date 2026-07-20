@@ -34,14 +34,15 @@ export const SCENE_CONFIG = {
     radius: 0.07,
     modeA: {
       radius: 1.4,
-      turns: 0.72,
+      turns: 0.5,
       speed: 0.025,
     },
     modeB: {
       radius: 0.65,
-      turns: 1.35,
+      turns: 0.9,
       speed: -0.017,
     },
+    combinedModeRadius: 0.9,
     color: 0xa9b6bc,
     metalness: 0.85,
     roughness: 0.24,
