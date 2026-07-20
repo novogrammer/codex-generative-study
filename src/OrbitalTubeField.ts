@@ -1,0 +1,224 @@
+import * as THREE from 'three/webgpu'
+import {
+  attribute,
+  float,
+  fract,
+  instanceIndex,
+  select,
+  sin,
+  time,
+  vec3,
+} from 'three/tsl'
+import { SCENE_CONFIG } from './config'
+
+const TAU = Math.PI * 2
+
+export class OrbitalTubeField {
+  public readonly object: THREE.InstancedMesh
+
+  private readonly geometry: THREE.BufferGeometry
+  private readonly material: THREE.MeshStandardNodeMaterial
+
+  public constructor() {
+    this.geometry = this.createGeometry()
+    this.material = this.createMaterial()
+    this.object = new THREE.InstancedMesh(
+      this.geometry,
+      this.material,
+      SCENE_CONFIG.tubes.count,
+    )
+    this.object.frustumCulled = false
+    this.setInstanceTransforms()
+  }
+
+  public dispose(): void {
+    this.geometry.dispose()
+    this.material.dispose()
+  }
+
+  private createGeometry(): THREE.BufferGeometry {
+    const { longitudinalSegments, radialSegments } = SCENE_CONFIG.tubes
+    const verticesPerRing = radialSegments + 1
+    const positions: number[] = []
+    const normals: number[] = []
+    const curveParameters: number[] = []
+    const ringAngles: number[] = []
+    const indices: number[] = []
+
+    for (let longitudinal = 0; longitudinal <= longitudinalSegments; longitudinal += 1) {
+      const u = longitudinal / longitudinalSegments
+
+      for (let radial = 0; radial <= radialSegments; radial += 1) {
+        const angle = (radial / radialSegments) * TAU
+        positions.push(u, Math.cos(angle), Math.sin(angle))
+        normals.push(0, Math.cos(angle), Math.sin(angle))
+        curveParameters.push(u)
+        ringAngles.push(angle)
+      }
+    }
+
+    for (let longitudinal = 0; longitudinal < longitudinalSegments; longitudinal += 1) {
+      for (let radial = 0; radial < radialSegments; radial += 1) {
+        const a = longitudinal * verticesPerRing + radial
+        const b = a + verticesPerRing
+        const c = b + 1
+        const d = a + 1
+        indices.push(a, b, d, b, c, d)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
+    geometry.setAttribute('curveU', new THREE.Float32BufferAttribute(curveParameters, 1))
+    geometry.setAttribute('ringAngle', new THREE.Float32BufferAttribute(ringAngles, 1))
+    geometry.setIndex(indices)
+    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 24)
+    return geometry
+  }
+
+  private createMaterial(): THREE.MeshStandardNodeMaterial {
+    const config = SCENE_CONFIG.tubes
+    const material = new THREE.MeshStandardNodeMaterial({
+      color: config.color,
+      metalness: config.metalness,
+      roughness: config.roughness,
+      side: THREE.DoubleSide,
+    })
+
+    const uNode = attribute<'float'>('curveU', 'float')
+    const angleNode = attribute<'float'>('ringAngle', 'float')
+    const instance = float(instanceIndex)
+    const hashA = fract(sin(instance.mul(12.9898).add(0.31)).mul(43758.5453))
+    const hashB = fract(sin(instance.mul(78.233).add(2.17)).mul(24634.6345))
+    const hashC = fract(sin(instance.mul(39.425).add(7.91)).mul(19341.117))
+    const variationA = hashA.mul(0.4).add(0.8)
+    const variationB = hashB.mul(0.4).add(0.8)
+    const variationSpeed = hashC.mul(0.4).add(0.8)
+    const phaseA = hashB.mul(TAU)
+    const phaseB = hashC.mul(TAU)
+
+    const curvePoint = (u: THREE.Node<'float'>) => {
+      const angleA = u
+        .mul(config.modeA.turns * TAU)
+        .add(time.mul(config.modeA.speed * TAU).mul(variationSpeed))
+        .add(phaseA)
+      const angleB = u
+        .mul(config.modeB.turns * TAU)
+        .add(time.mul(config.modeB.speed * TAU).mul(variationSpeed))
+        .add(phaseB)
+      const radiusA = variationA.mul(config.modeA.radius)
+      const radiusB = variationB.mul(config.modeB.radius)
+
+      return vec3(
+        angleA.cos().mul(radiusA),
+        angleA.sin().mul(radiusA).add(angleB.cos().mul(radiusB)),
+        angleB.sin().mul(radiusB),
+      )
+    }
+
+    const curveTangent = (u: THREE.Node<'float'>) => {
+      const angleA = u
+        .mul(config.modeA.turns * TAU)
+        .add(time.mul(config.modeA.speed * TAU).mul(variationSpeed))
+        .add(phaseA)
+      const angleB = u
+        .mul(config.modeB.turns * TAU)
+        .add(time.mul(config.modeB.speed * TAU).mul(variationSpeed))
+        .add(phaseB)
+      const radiusA = variationA.mul(config.modeA.radius)
+      const radiusB = variationB.mul(config.modeB.radius)
+      const frequencyA = config.modeA.turns * TAU
+      const frequencyB = config.modeB.turns * TAU
+
+      return vec3(
+        angleA.sin().mul(radiusA.mul(-frequencyA)),
+        angleA
+          .cos()
+          .mul(radiusA.mul(frequencyA))
+          .sub(angleB.sin().mul(radiusB.mul(frequencyB))),
+        angleB.cos().mul(radiusB.mul(frequencyB)),
+      ).normalize()
+    }
+
+    const surfacePoint = (
+      u: THREE.Node<'float'>,
+      ringAngle: THREE.Node<'float'>,
+    ) => {
+      const center = curvePoint(u)
+      const tangent = curveTangent(u)
+      const signZ = select(tangent.z.greaterThanEqual(0), 1, -1)
+      const basisA = float(-1).div(signZ.add(tangent.z))
+      const basisB = tangent.x.mul(tangent.y).mul(basisA)
+      const normal = vec3(
+        float(1).add(
+          signZ.mul(tangent.x).mul(tangent.x).mul(basisA),
+        ),
+        signZ.mul(basisB),
+        signZ.mul(tangent.x).negate(),
+      )
+      const binormal = vec3(
+        basisB,
+        signZ.add(tangent.y.mul(tangent.y).mul(basisA)),
+        tangent.y.negate(),
+      )
+      const radial = normal
+        .mul(ringAngle.cos())
+        .add(binormal.mul(ringAngle.sin()))
+
+      return center.add(radial.mul(config.radius))
+    }
+
+    const deformedPosition = surfacePoint(uNode, angleNode)
+    const longitudinalEpsilon = 1 / config.longitudinalSegments
+    const angularEpsilon = TAU / (config.radialSegments * 4)
+    const tangentU = surfacePoint(uNode.add(longitudinalEpsilon), angleNode).sub(
+      surfacePoint(uNode.sub(longitudinalEpsilon), angleNode),
+    )
+    const tangentAngle = surfacePoint(
+      uNode,
+      angleNode.add(angularEpsilon),
+    ).sub(surfacePoint(uNode, angleNode.sub(angularEpsilon)))
+
+    material.positionNode = deformedPosition
+    material.normalNode = tangentAngle.cross(tangentU).normalize()
+    return material
+  }
+
+  private setInstanceTransforms(): void {
+    const [width, height, depth] = SCENE_CONFIG.tubes.spread
+    const random = this.createRandom(0x51a7c3)
+    const matrix = new THREE.Matrix4()
+    const position = new THREE.Vector3()
+    const rotation = new THREE.Quaternion()
+    const scale = new THREE.Vector3(1, 1, 1)
+    const euler = new THREE.Euler()
+    const [rotationX, rotationY, rotationZ] = SCENE_CONFIG.tubes.rotationSpread
+
+    for (let index = 0; index < SCENE_CONFIG.tubes.count; index += 1) {
+      position.set(
+        (random() - 0.5) * width,
+        (random() - 0.5) * height,
+        -2 - random() * depth,
+      )
+      euler.set(
+        (random() - 0.5) * rotationX,
+        (random() - 0.5) * rotationY,
+        (random() - 0.5) * rotationZ,
+      )
+      rotation.setFromEuler(euler)
+      matrix.compose(position, rotation, scale)
+      this.object.setMatrixAt(index, matrix)
+    }
+
+    this.object.instanceMatrix.needsUpdate = true
+  }
+
+  private createRandom(seed: number): () => number {
+    let state = seed >>> 0
+    return () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+      return state / 0x100000000
+    }
+  }
+}
