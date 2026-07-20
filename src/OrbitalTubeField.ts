@@ -45,6 +45,8 @@ export class OrbitalTubeField {
     const normals: number[] = []
     const curveParameters: number[] = []
     const ringAngles: number[] = []
+    const radiusScales: number[] = []
+    const capNormalScales: number[] = []
     const indices: number[] = []
 
     for (let longitudinal = 0; longitudinal <= longitudinalSegments; longitudinal += 1) {
@@ -56,7 +58,59 @@ export class OrbitalTubeField {
         normals.push(0, Math.cos(angle), Math.sin(angle))
         curveParameters.push(u)
         ringAngles.push(angle)
+        radiusScales.push(1)
+        capNormalScales.push(0)
       }
+    }
+
+    const capRingStart = positions.length / 3
+    for (let radial = 0; radial < radialSegments; radial += 1) {
+      const angle = (radial / radialSegments) * TAU
+      positions.push(1, Math.cos(angle), Math.sin(angle))
+      normals.push(1, 0, 0)
+      curveParameters.push(1)
+      ringAngles.push(angle)
+      radiusScales.push(1)
+      capNormalScales.push(1)
+    }
+
+    const tipIndex = positions.length / 3
+    positions.push(1, 0, 0)
+    normals.push(1, 0, 0)
+    curveParameters.push(1)
+    ringAngles.push(0)
+    radiusScales.push(0)
+    capNormalScales.push(1)
+
+    for (let radial = 0; radial < radialSegments; radial += 1) {
+      const a = capRingStart + radial
+      const b = capRingStart + ((radial + 1) % radialSegments)
+      indices.push(a, b, tipIndex)
+    }
+
+    const rootCapRingStart = positions.length / 3
+    for (let radial = 0; radial < radialSegments; radial += 1) {
+      const angle = (radial / radialSegments) * TAU
+      positions.push(0, Math.cos(angle), Math.sin(angle))
+      normals.push(-1, 0, 0)
+      curveParameters.push(0)
+      ringAngles.push(angle)
+      radiusScales.push(1)
+      capNormalScales.push(-1)
+    }
+
+    const rootCenterIndex = positions.length / 3
+    positions.push(0, 0, 0)
+    normals.push(-1, 0, 0)
+    curveParameters.push(0)
+    ringAngles.push(0)
+    radiusScales.push(0)
+    capNormalScales.push(-1)
+
+    for (let radial = 0; radial < radialSegments; radial += 1) {
+      const a = rootCapRingStart + radial
+      const b = rootCapRingStart + ((radial + 1) % radialSegments)
+      indices.push(a, rootCenterIndex, b)
     }
 
     for (let longitudinal = 0; longitudinal < longitudinalSegments; longitudinal += 1) {
@@ -74,6 +128,11 @@ export class OrbitalTubeField {
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
     geometry.setAttribute('curveU', new THREE.Float32BufferAttribute(curveParameters, 1))
     geometry.setAttribute('ringAngle', new THREE.Float32BufferAttribute(ringAngles, 1))
+    geometry.setAttribute('radiusScale', new THREE.Float32BufferAttribute(radiusScales, 1))
+    geometry.setAttribute(
+      'capNormalScale',
+      new THREE.Float32BufferAttribute(capNormalScales, 1),
+    )
     geometry.setIndex(indices)
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 24)
     return geometry
@@ -90,6 +149,8 @@ export class OrbitalTubeField {
 
     const uNode = attribute<'float'>('curveU', 'float')
     const angleNode = attribute<'float'>('ringAngle', 'float')
+    const radiusScaleNode = attribute<'float'>('radiusScale', 'float')
+    const capNormalScaleNode = attribute<'float'>('capNormalScale', 'float')
     const instance = float(instanceIndex)
     const hashA = fract(sin(instance.mul(12.9898).add(0.31)).mul(43758.5453))
     const hashB = fract(sin(instance.mul(78.233).add(2.17)).mul(24634.6345))
@@ -190,6 +251,7 @@ export class OrbitalTubeField {
     const surfaceData = (
       u: THREE.Node<'float'>,
       ringAngle: THREE.Node<'float'>,
+      radiusScale: THREE.Node<'float'>,
     ) => {
       const center = curvePoint(u)
       const tangent = curveTangent(u)
@@ -201,15 +263,19 @@ export class OrbitalTubeField {
         .add(binormal.mul(ringAngle.sin()))
 
       return {
-        position: center.add(radial.mul(config.radius)),
+        position: center.add(radial.mul(config.radius).mul(radiusScale)),
         normal: radial,
+        tangent,
       }
     }
 
-    const surface = surfaceData(uNode, angleNode)
+    const surface = surfaceData(uNode, angleNode, radiusScaleNode)
 
     material.positionNode = surface.position
     material.normalNode = surface.normal
+      .mul(float(1).sub(capNormalScaleNode.abs()))
+      .add(surface.tangent.mul(capNormalScaleNode))
+      .normalize()
     return material
   }
 
