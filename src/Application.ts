@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Inspector } from 'three/addons/inspector/Inspector.js'
+import { BloomPipeline } from './BloomPipeline'
 import { DeepSeaScene } from './DeepSeaScene'
 import { MarineSnowField } from './MarineSnowField'
 import { OrbitalTubeField } from './OrbitalTubeField'
@@ -14,6 +15,7 @@ export class Application {
   private readonly deepSea: DeepSeaScene
   private readonly tubeField: OrbitalTubeField
   private readonly marineSnow: MarineSnowField
+  private readonly bloomPipeline: BloomPipeline
 
   public constructor(root: HTMLElement) {
     this.root = root
@@ -38,6 +40,11 @@ export class Application {
     this.tubeField = new OrbitalTubeField()
     this.marineSnow = new MarineSnowField()
     this.deepSea.scene.add(this.tubeField.object, this.marineSnow.object)
+    this.bloomPipeline = new BloomPipeline(
+      this.renderer,
+      this.deepSea.scene,
+      this.camera,
+    )
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
@@ -59,7 +66,7 @@ export class Application {
 
   private readonly render = (): void => {
     this.controls.update()
-    this.renderer.render(this.deepSea.scene, this.camera)
+    this.bloomPipeline.render()
   }
 
   private readonly handleResize = (): void => {
@@ -80,6 +87,7 @@ export class Application {
     this.controls.dispose()
     this.tubeField.dispose()
     this.marineSnow.dispose()
+    this.bloomPipeline.dispose()
     this.renderer.dispose()
   }
 }

@@ -14,6 +14,13 @@ export const SCENE_CONFIG = {
     minDistance: 3,
     maxDistance: 18,
   },
+  postProcessing: {
+    bloom: {
+      strength: 0.01,
+      radius: 0.3,
+      threshold: 1,
+    },
+  },
   lighting: {
     search: {
       distance: 30,
