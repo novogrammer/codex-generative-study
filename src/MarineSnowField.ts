@@ -1,33 +1,47 @@
 import * as THREE from 'three/webgpu'
 import {
+  cameraWorldMatrix,
   float,
   fract,
   instancedBufferAttribute,
+  positionGeometry,
   smoothstep,
   time,
   uniform,
   uv,
   vec3,
+  vec4,
 } from 'three/tsl'
 import { SCENE_CONFIG } from './config'
 
 export class MarineSnowField {
-  public readonly object: THREE.Sprite
+  public readonly object: THREE.InstancedMesh
 
-  private readonly material: THREE.SpriteNodeMaterial
+  private readonly geometry: THREE.PlaneGeometry
+  private readonly material: THREE.MeshLambertNodeMaterial
 
   public constructor() {
+    this.geometry = new THREE.PlaneGeometry(1, 1)
     this.material = this.createMaterial()
-    this.object = new THREE.Sprite(this.material)
-    this.object.count = SCENE_CONFIG.marineSnow.count
+    this.object = new THREE.InstancedMesh(
+      this.geometry,
+      this.material,
+      SCENE_CONFIG.marineSnow.count,
+    )
+    const identity = new THREE.Matrix4()
+    for (let index = 0; index < SCENE_CONFIG.marineSnow.count; index += 1) {
+      this.object.setMatrixAt(index, identity)
+    }
+    this.object.instanceMatrix.needsUpdate = true
     this.object.frustumCulled = false
   }
 
   public dispose(): void {
+    this.geometry.dispose()
     this.material.dispose()
   }
 
-  private createMaterial(): THREE.SpriteNodeMaterial {
+  private createMaterial(): THREE.MeshLambertNodeMaterial {
     const config = SCENE_CONFIG.marineSnow
     const [width, height, depth] = config.spread
     const [centerX, centerY, centerZ] = SCENE_CONFIG.controls.target
@@ -74,9 +88,8 @@ export class MarineSnowField {
       .mul(config.driftAmount * 0.65)
       .mul(amplitude)
 
-    const material = new THREE.SpriteNodeMaterial({
+    const material = new THREE.MeshLambertNodeMaterial({
       color: config.color,
-      sizeAttenuation: true,
       transparent: true,
       depthWrite: false,
       alphaTest: 0.01,
@@ -87,8 +100,13 @@ export class MarineSnowField {
       fallingY,
       basePosition.z.add(driftZ),
     )
-    material.positionNode = animatedPosition
-    material.scaleNode = uniform(config.size).mul(sizeVariation)
+    const billboardOffset = cameraWorldMatrix
+      .mul(vec4(positionGeometry, 0))
+      .xyz
+      .mul(uniform(config.size))
+      .mul(sizeVariation)
+    material.positionNode = animatedPosition.add(billboardOffset)
+    material.normalNode = vec3(0, 0, 1)
     material.opacityNode = float(1)
       .sub(smoothstep(0.16, 0.5, distanceFromCenter))
       .mul(config.opacity)

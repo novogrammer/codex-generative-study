@@ -57,6 +57,7 @@
 - 実装時は関数中心ではなく、クラス中心の構成を優先する
 - `WebGPURenderer` とTSLを使用し、WebGPU非対応環境ではThree.jsのWebGL2バックエンドへフォールバックする
 - `InstancedMesh`、`MeshStandardNodeMaterial`、`positionNode`、`normalNode`を使用する
+- マリンスノーはカメラ正対する平面の `InstancedMesh` と `MeshLambertNodeMaterial` で描画し、通常のライトを受ける
 - CPUによる毎フレームの頂点更新と `SkinnedMesh` は使用しない
 - 根元の断面軸はY軸とZ軸から作り、各頂点で根元から16段階の平行移動を独立評価して回転最小フレームを近似する
 - 変形後の法線は回転最小フレームの断面放射方向からGPU上で求める
