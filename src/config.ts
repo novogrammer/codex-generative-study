@@ -16,8 +16,8 @@ export const SCENE_CONFIG = {
   },
   postProcessing: {
     bloom: {
-      strength: 0.01,
-      radius: 0.3,
+      strength: 0.02,
+      radius: 0,
       threshold: 1,
     },
   },
@@ -42,7 +42,7 @@ export const SCENE_CONFIG = {
         },
       ],
     },
-    ambient: { color: 0x183947, intensity: 20 },
+    ambient: { color: 0x183947, intensity: 2 },
   },
   tubes: {
     count: 32,
@@ -87,6 +87,6 @@ export const SCENE_CONFIG = {
     size: 0.04,
     sizeVariation: [0.65, 1.8] as const,
     color: 0xb9d8df,
-    opacity: 0.2,
+    opacity: 0.3,
   },
 } as const
