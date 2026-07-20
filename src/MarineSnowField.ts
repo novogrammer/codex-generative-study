@@ -82,11 +82,12 @@ export class MarineSnowField {
       alphaTest: 0.01,
     })
     const distanceFromCenter = uv().sub(0.5).length()
-    material.positionNode = vec3(
+    const animatedPosition = vec3(
       basePosition.x.add(driftX),
       fallingY,
       basePosition.z.add(driftZ),
     )
+    material.positionNode = animatedPosition
     material.scaleNode = uniform(config.size).mul(sizeVariation)
     material.opacityNode = float(1)
       .sub(smoothstep(0.16, 0.5, distanceFromCenter))

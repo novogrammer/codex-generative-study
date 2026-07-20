@@ -1,8 +1,11 @@
 import * as THREE from 'three/webgpu'
 import { SCENE_CONFIG } from './config'
+import { VolumetricSpotLight } from './VolumetricSpotLight'
 
 export class DeepSeaScene {
   public readonly scene: THREE.Scene
+
+  private readonly volumetricLight: VolumetricSpotLight
 
   public constructor(camera: THREE.PerspectiveCamera) {
     this.scene = new THREE.Scene()
@@ -14,6 +17,12 @@ export class DeepSeaScene {
 
     this.scene.add(camera)
     this.addLights(camera)
+    this.volumetricLight = new VolumetricSpotLight()
+    camera.add(this.volumetricLight.object)
+  }
+
+  public dispose(): void {
+    this.volumetricLight.dispose()
   }
 
   private addLights(camera: THREE.PerspectiveCamera): void {
@@ -30,26 +39,10 @@ export class DeepSeaScene {
     searchLight.target.position.set(0, -0.2, -7)
     camera.add(searchLight, searchLight.target)
 
-    const blueFill = new THREE.PointLight(
-      lighting.blueFill.color,
-      lighting.blueFill.intensity,
-      lighting.blueFill.distance,
-      lighting.blueFill.decay,
-    )
-    blueFill.position.set(-5, 2, -4)
-
-    const rimLight = new THREE.PointLight(
-      lighting.rim.color,
-      lighting.rim.intensity,
-      lighting.rim.distance,
-      lighting.rim.decay,
-    )
-    rimLight.position.set(5, -3, -8)
-
     const ambient = new THREE.AmbientLight(
       lighting.ambient.color,
       lighting.ambient.intensity,
     )
-    this.scene.add(blueFill, rimLight, ambient)
+    this.scene.add(ambient)
   }
 }

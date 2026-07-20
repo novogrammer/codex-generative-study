@@ -80,6 +80,7 @@ export class Application {
     this.controls.dispose()
     this.tubeField.dispose()
     this.marineSnow.dispose()
+    this.deepSea.dispose()
     this.renderer.dispose()
   }
 }

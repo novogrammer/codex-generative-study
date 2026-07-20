@@ -8,6 +8,7 @@ import {
   sin,
   smoothstep,
   time,
+  transformNormalToView,
   vec3,
 } from 'three/tsl'
 import { SCENE_CONFIG } from './config'
@@ -151,6 +152,7 @@ export class OrbitalTubeField {
     const angleNode = attribute<'float'>('ringAngle', 'float')
     const radiusScaleNode = attribute<'float'>('radiusScale', 'float')
     const capNormalScaleNode = attribute<'float'>('capNormalScale', 'float')
+    const instanceQuaternion = attribute<'vec4'>('instanceQuaternion', 'vec4')
     const instance = float(instanceIndex)
     const hashA = fract(sin(instance.mul(12.9898).add(0.31)).mul(43758.5453))
     const hashB = fract(sin(instance.mul(78.233).add(2.17)).mul(24634.6345))
@@ -277,12 +279,19 @@ export class OrbitalTubeField {
     }
 
     const surface = surfaceData(uNode, angleNode, radiusScaleNode)
-
-    material.positionNode = surface.position
-    material.normalNode = surface.normal
+    const localNormal = surface.normal
       .mul(float(1).sub(capNormalScaleNode.abs()))
       .add(surface.tangent.mul(capNormalScaleNode))
       .normalize()
+    const quaternionVector = instanceQuaternion.xyz
+    const twiceCross = quaternionVector.cross(localNormal).mul(2)
+    const instanceNormal = localNormal
+      .add(twiceCross.mul(instanceQuaternion.w))
+      .add(quaternionVector.cross(twiceCross))
+      .normalize()
+
+    material.positionNode = surface.position
+    material.normalNode = transformNormalToView(instanceNormal).normalize()
     return material
   }
 
@@ -293,6 +302,7 @@ export class OrbitalTubeField {
     const rotation = new THREE.Quaternion()
     const scale = new THREE.Vector3(1, 1, 1)
     const euler = new THREE.Euler()
+    const instanceQuaternions = new Float32Array(SCENE_CONFIG.tubes.count * 4)
     const [rotationX, rotationY, rotationZ] = SCENE_CONFIG.tubes.rotationSpread
 
     for (let index = 0; index < SCENE_CONFIG.tubes.count; index += 1) {
@@ -302,11 +312,16 @@ export class OrbitalTubeField {
         (random() - 0.5) * rotationZ,
       )
       rotation.setFromEuler(euler)
+      rotation.toArray(instanceQuaternions, index * 4)
       matrix.compose(position, rotation, scale)
       this.object.setMatrixAt(index, matrix)
     }
 
     this.object.instanceMatrix.needsUpdate = true
+    this.geometry.setAttribute(
+      'instanceQuaternion',
+      new THREE.InstancedBufferAttribute(instanceQuaternions, 4),
+    )
   }
 
   private createRandom(seed: number): () => number {
