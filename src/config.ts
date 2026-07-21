@@ -74,7 +74,13 @@ export const SCENE_CONFIG = {
       material: {
         color: 0xffc0c0,
         metalness: 1,
-        roughness: 0.1,
+        roughness: 0.2,
+      },
+      roughnessPattern: {
+        cellMetalness: 0.3,
+        cellRoughness: 0.6,
+        grid: [10, 3] as const,
+        curveDepth: 0.45,
       },
     },
   },

@@ -247,6 +247,34 @@ export class OrbitalTubeField {
     const circumferentialOffsetNode = plateParameters?.y ?? float(0)
     const outwardOffsetNode = plateParameters?.z ?? float(0)
     const plateSlopeNode = plateParameters?.w ?? float(0)
+
+    if (plateParameters !== null) {
+      const plates = config.plates
+      const pattern = plates.roughnessPattern
+      const plateU = longitudinalOffsetNode.div(plates.length).add(0.5)
+      const plateV = circumferentialOffsetNode.div(plates.width).add(0.5)
+      const gridU = plateU.mul(pattern.grid[0])
+      const gridV = plateV.mul(pattern.grid[1])
+      const across = fract(gridV).sub(0.5).mul(2)
+      const curveOffset = float(pattern.curveDepth).sub(
+        across.mul(across).mul(pattern.curveDepth),
+      )
+      const cellX = gridU.sub(curveOffset).floor()
+      const cellY = gridV.floor()
+      const checkerMask = cellX.add(cellY).mod(2).sign()
+
+      material.roughnessNode = mix(
+        plates.material.roughness,
+        pattern.cellRoughness,
+        checkerMask,
+      )
+      material.metalnessNode = mix(
+        plates.material.metalness,
+        pattern.cellMetalness,
+        checkerMask,
+      )
+    }
+
     const instanceQuaternion = attribute<'vec4'>('instanceQuaternion', 'vec4')
     const instance = float(instanceIndex)
     const hashA = fract(sin(instance.mul(12.9898).add(0.31)).mul(43758.5453))
